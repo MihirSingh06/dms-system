@@ -105,6 +105,11 @@ app.MapGet("/weatherforecast", () =>
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    // Apply migrations automatically
+    db.Database.Migrate();
+
+    // Seed users after tables exist
     SeedData.SeedUsers(db);
 }
 
