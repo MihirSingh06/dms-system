@@ -232,15 +232,16 @@ return (
     <hr />
 
     <h2>AI Insights</h2>
-    {aiInsights.length === 0 ? (
-      <p>No insights available.</p>
-    ) : (
-      <ul>
-        {aiInsights.map((insight, index) => (
-          <li key={index}>{insight}</li>
-        ))}
-      </ul>
-    )}
+
+{Array.isArray(aiInsights) && aiInsights.length > 0 ? (
+  <ul>
+    {aiInsights.map((insight, index) => (
+      <li key={index}>{insight}</li>
+    ))}
+  </ul>
+) : (
+  <p>No insights available.</p>
+)}
 
     <hr />
 
