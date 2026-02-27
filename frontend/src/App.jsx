@@ -34,15 +34,15 @@ function App() {
 
   const [userRole, setUserRole] = useState(null);
 
-const [reportData, setReportData] = useState(null);
+  const [reportData, setReportData] = useState(null);
 
-const [filterStartDate, setFilterStartDate] = useState("");
-const [filterEndDate, setFilterEndDate] = useState("");
-const [filterVendor, setFilterVendor] = useState("");
-const [filterStatus, setFilterStatus] = useState("");
-const [filterMinAmount, setFilterMinAmount] = useState("");
-const [filterMaxAmount, setFilterMaxAmount] = useState("");
-const [aiInsights, setAiInsights] = useState([]);
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterVendor, setFilterVendor] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterMinAmount, setFilterMinAmount] = useState("");
+  const [filterMaxAmount, setFilterMaxAmount] = useState("");
+  const [aiInsights, setAiInsights] = useState([]);
 
 const handleFilter = async () => {
   try {
@@ -312,27 +312,37 @@ return (
       onChange={(e) => setVatAmount(e.target.value)}
     />
 
-    <input
-      type="file"
-      onChange={async (e) => {
-        const selectedFile = e.target.files?.[0];
-        if (!selectedFile) return;
+<input
+  type="file"
+  onChange={async (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-        setFile(selectedFile);
+    setFile(selectedFile);
 
-        try {
-          const data = await extractOcr(selectedFile);
+    try {
+      const data = await extractOcr(selectedFile);
 
-          setVendor(data.vendor || "");
-          setInvoiceNumber(data.invoiceNumber || "");
-          setInvoiceDate(data.invoiceDate || "");
-          setAmount(data.amount || "");
-          setVatAmount(data.vatAmount || "");
-        } catch (error) {
-          console.error("OCR failed:", error);
-        }
-      }}
-    />
+      setVendor(data.vendor || "");
+      setInvoiceNumber(data.invoiceNumber || "");
+
+      // FIX DATE FORMAT FOR <input type="date" />
+      if (data.invoiceDate) {
+        const formattedDate = data.invoiceDate.includes("T")
+          ? data.invoiceDate.split("T")[0]
+          : data.invoiceDate;
+        setInvoiceDate(formattedDate);
+      } else {
+        setInvoiceDate("");
+      }
+
+      setAmount(data.amount || "");
+      setVatAmount(data.vatAmount || "");
+    } catch (error) {
+      console.error("OCR failed:", error);
+    }
+  }}
+/>
 
     <button onClick={handleUpload}>Upload</button>
     <div>{uploadMessage}</div>
