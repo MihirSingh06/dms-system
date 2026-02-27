@@ -110,12 +110,41 @@ var invoiceNumber = invoiceMatch.Success
     : "";
 
         // Date like August 1, 2025
-        var dateMatch = Regex.Match(extractedText, @"[A-Za-z]+\s\d{1,2},\s\d{4}");
-        DateTime? invoiceDate = null;
-        if (dateMatch.Success && DateTime.TryParse(dateMatch.Value, out var parsedDate))
+DateTime? invoiceDate = null;
+
+// PRIORITY 1: Look specifically for "Invoice Date"
+var labeledDateMatch = Regex.Match(
+    extractedText,
+    @"Invoice\s*Date[:\s]*([A-Za-z0-9,\-/ ]+)",
+    RegexOptions.IgnoreCase);
+
+if (labeledDateMatch.Success)
+{
+    var dateString = labeledDateMatch.Groups[1].Value.Trim();
+
+    if (DateTime.TryParse(dateString, out var parsedDate))
+    {
+        invoiceDate = parsedDate;
+    }
+}
+
+// PRIORITY 2: If still null, fallback to first standard date pattern
+if (invoiceDate == null)
+{
+    var fallbackMatch = Regex.Match(
+        extractedText,
+        @"\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b");
+
+    if (fallbackMatch.Success)
+    {
+        var dateString = fallbackMatch.Groups[1].Value.Trim();
+
+        if (DateTime.TryParse(dateString, out var parsedDate))
         {
             invoiceDate = parsedDate;
         }
+    }
+}
 
         // Total Amount
         var amountMatch = Regex.Match(extractedText,
