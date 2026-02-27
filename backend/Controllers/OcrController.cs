@@ -26,8 +26,18 @@ public async Task<IActionResult> Extract(IFormFile file)
 
     var extension = Path.GetExtension(file.FileName).ToLower();
 
-    if (extension != ".png" && extension != ".jpg" && extension != ".jpeg")
-        return BadRequest("Only image files (PNG, JPG) supported for OCR.");
+    var allowedExtensions = new[] 
+{
+    ".png", ".jpg", ".jpeg",
+    ".pdf",
+    ".xls", ".xlsx"
+};
+
+if (!allowedExtensions.Contains(extension))
+    return BadRequest("Unsupported file type. Allowed: PDF, PNG, JPG, Excel.");
+
+if (file.Length > 10 * 1024 * 1024)
+    return BadRequest("File exceeds 10MB limit.");
 
     var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
     Directory.CreateDirectory(uploadsFolder);

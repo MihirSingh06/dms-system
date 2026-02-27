@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ClosedXML.Excel;
 
 namespace backend.Services;
 
@@ -33,4 +34,26 @@ public class FileService
 
         return (fullPath, hash);
     }
+
+    public async Task<string> ExtractExcelTextAsync(IFormFile file)
+{
+    using var stream = new MemoryStream();
+    await file.CopyToAsync(stream);
+    stream.Position = 0;
+
+    using var workbook = new ClosedXML.Excel.XLWorkbook(stream);
+    var worksheet = workbook.Worksheet(1);
+
+    var text = "";
+
+    foreach (var row in worksheet.RowsUsed())
+    {
+        foreach (var cell in row.CellsUsed())
+        {
+            text += cell.GetString() + " ";
+        }
+    }
+
+    return text;
+}
 }
