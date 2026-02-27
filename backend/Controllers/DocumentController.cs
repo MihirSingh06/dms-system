@@ -102,7 +102,7 @@ public class DocumentsController : ControllerBase
         // Invoice number (pattern like 20-3592 or INV-1234)
 var invoiceMatch = Regex.Match(
     extractedText,
-    @"Invoice\s*(No|#)?[:\s]*([A-Z0-9\-]+)",
+    @"Invoice\s*(No|#)?[:\s]*(\d{2}-\d{4})",
     RegexOptions.IgnoreCase);
 
 var invoiceNumber = invoiceMatch.Success
@@ -112,37 +112,29 @@ var invoiceNumber = invoiceMatch.Success
         // Date like August 1, 2025
 DateTime? invoiceDate = null;
 
-// PRIORITY 1: Look specifically for "Invoice Date"
+// FIRST: Try labeled "Invoice Date"
 var labeledDateMatch = Regex.Match(
     extractedText,
-    @"Invoice\s*Date[:\s]*([A-Za-z0-9,\-/ ]+)",
+    @"Invoice\s*Date[:\s]*(\d{4}-\d{2}-\d{2})",
     RegexOptions.IgnoreCase);
 
-if (labeledDateMatch.Success)
+if (labeledDateMatch.Success &&
+    DateTime.TryParse(labeledDateMatch.Groups[1].Value, out var parsedDate1))
 {
-    var dateString = labeledDateMatch.Groups[1].Value.Trim();
-
-    if (DateTime.TryParse(dateString, out var parsedDate))
-    {
-        invoiceDate = parsedDate;
-    }
+    invoiceDate = parsedDate1;
 }
 
-// PRIORITY 2: If still null, fallback to first standard date pattern
+// SECOND: Fallback – look for ISO date anywhere
 if (invoiceDate == null)
 {
-    var fallbackMatch = Regex.Match(
+    var isoMatch = Regex.Match(
         extractedText,
-        @"\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b");
+        @"\b(\d{4}-\d{2}-\d{2})\b");
 
-    if (fallbackMatch.Success)
+    if (isoMatch.Success &&
+        DateTime.TryParse(isoMatch.Groups[1].Value, out var parsedDate2))
     {
-        var dateString = fallbackMatch.Groups[1].Value.Trim();
-
-        if (DateTime.TryParse(dateString, out var parsedDate))
-        {
-            invoiceDate = parsedDate;
-        }
+        invoiceDate = parsedDate2;
     }
 }
 
