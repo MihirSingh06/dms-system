@@ -79,6 +79,29 @@ public async Task<IActionResult> VendorAnalysis(
     return Ok(result);
 }
 
+
+ // =========================
+    // VAT REPORT
+    // =========================
+    [HttpGet("vat-report")]
+    public async Task<IActionResult> GetVatReport()
+    {
+        var approved = await _context.Documents
+            .Where(d => d.Status == DocumentStatus.Approved)
+            .ToListAsync();
+
+        var totalGross = approved.Sum(d => d.Amount ?? 0);
+        var totalVat = approved.Sum(d => d.VatAmount ?? 0);
+        var totalNet = totalGross - totalVat;
+
+        return Ok(new
+        {
+            TotalNet = totalNet,
+            TotalVat = totalVat,
+            TotalGross = totalGross
+        });
+    }
+
 [HttpGet("status-summary")]
 public async Task<IActionResult> StatusSummary()
 {

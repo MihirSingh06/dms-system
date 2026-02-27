@@ -20,6 +20,7 @@ public class Document
     public DateTime? InvoiceDate { get; set; }
     public decimal? Amount { get; set; }
     public decimal? VatAmount { get; set; }
+    
 
     public string FileHash { get; set; } = string.Empty;
 
