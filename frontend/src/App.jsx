@@ -326,12 +326,22 @@ return (
       setVendor(data.vendor || "");
       setInvoiceNumber(data.invoiceNumber || "");
 
-      // FIX DATE FORMAT FOR <input type="date" />
+      // Proper date conversion for <input type="date" />
       if (data.invoiceDate) {
-        const formattedDate = data.invoiceDate.includes("T")
-          ? data.invoiceDate.split("T")[0]
-          : data.invoiceDate;
-        setInvoiceDate(formattedDate);
+        const parsedDate = new Date(data.invoiceDate);
+
+        if (!isNaN(parsedDate)) {
+          const formatted =
+            parsedDate.getFullYear() +
+            "-" +
+            String(parsedDate.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(parsedDate.getDate()).padStart(2, "0");
+
+          setInvoiceDate(formatted);
+        } else {
+          setInvoiceDate("");
+        }
       } else {
         setInvoiceDate("");
       }
