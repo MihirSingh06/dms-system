@@ -28,171 +28,180 @@ public class DocumentsController : ControllerBase
         _ocrService = ocrService;
     }
 
-    // =========================
-    // UPLOAD DOCUMENT (AI AUTO PROCESSING)
-    // =========================
-    [HttpPost("upload")]
-    public async Task<IActionResult> Upload(IFormFile file)
+   // =========================
+// UPLOAD DOCUMENT (AI AUTO PROCESSING)
+// =========================
+[HttpPost("upload")]
+public async Task<IActionResult> Upload(IFormFile file)
+{
+    if (file == null || file.Length == 0)
+        return BadRequest("File required.");
+
+    if (file.Length > 10 * 1024 * 1024)
+        return BadRequest("File exceeds 10MB limit.");
+
+    var extension = Path.GetExtension(file.FileName).ToLower();
+
+    if (extension != ".pdf" &&
+        extension != ".png" &&
+        extension != ".jpg" &&
+        extension != ".jpeg" &&
+        extension != ".xls" &&
+        extension != ".xlsx")
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("File required.");
+        return BadRequest("Unsupported file type.");
+    }
 
-        if (file.Length > 10 * 1024 * 1024)
-            return BadRequest("File exceeds 10MB limit.");
+    var userIdClaim = User.FindFirst("id");
+    if (userIdClaim == null)
+        return Unauthorized();
 
-        var extension = Path.GetExtension(file.FileName).ToLower();
+    var userId = int.Parse(userIdClaim.Value);
 
-        if (extension != ".pdf" &&
-            extension != ".png" &&
-            extension != ".jpg" &&
-            extension != ".jpeg" &&
-            extension != ".xls" &&
-            extension != ".xlsx")
-        {
-            return BadRequest("Unsupported file type.");
-        }
+    var (path, hash) = await _fileService.SaveFileAsync(file);
 
-        var userIdClaim = User.FindFirst("id");
-        if (userIdClaim == null)
-            return Unauthorized();
+    // =========================
+    // DUPLICATE CHECK (HASH)
+    // =========================
+    var hashDuplicate = await _context.Documents
+        .FirstOrDefaultAsync(d => d.FileHash == hash);
 
-        var userId = int.Parse(userIdClaim.Value);
+    if (hashDuplicate != null)
+        return Conflict("This exact file was already uploaded.");
 
-        var (path, hash) = await _fileService.SaveFileAsync(file);
+    // =========================
+    // AI TEXT EXTRACTION
+    // =========================
+    string extractedText = "";
 
-        // =========================
-        // DUPLICATE CHECK (HASH)
-        // =========================
-        var hashDuplicate = await _context.Documents
-            .FirstOrDefaultAsync(d => d.FileHash == hash);
+    if (extension == ".pdf" ||
+        extension == ".png" ||
+        extension == ".jpg" ||
+        extension == ".jpeg")
+    {
+        extractedText = await _ocrService.ExtractTextAsync(file);
+    }
+    else if (extension == ".xls" || extension == ".xlsx")
+    {
+        extractedText = await _fileService.ExtractExcelTextAsync(file);
+    }
 
-        if (hashDuplicate != null)
-        {
-            return Conflict("This exact file was already uploaded.");
-        }
+    Console.WriteLine("===== OCR TEXT START =====");
+    Console.WriteLine(extractedText);
+    Console.WriteLine("===== OCR TEXT END =====");
 
-        // =========================
-        // AI TEXT EXTRACTION
-        // =========================
-        string extractedText = "";
+    if (string.IsNullOrWhiteSpace(extractedText))
+        return BadRequest("Unable to extract text from document.");
 
-        if (extension == ".pdf" ||
-            extension == ".png" ||
-            extension == ".jpg" ||
-            extension == ".jpeg")
-        {
-            extractedText = await _ocrService.ExtractTextAsync(file);
-        }
-        else if (extension == ".xls" || extension == ".xlsx")
-        {
-            extractedText = await _fileService.ExtractExcelTextAsync(file);
-        }
+// =========================
+// AI PARSING (STRUCTURED PATTERN EXTRACTION)
+// =========================
 
-        if (string.IsNullOrWhiteSpace(extractedText))
-            return BadRequest("Unable to extract text from document.");
+// Vendor = first line
+var vendorMatch = Regex.Match(extractedText, @"^(.*)", RegexOptions.Multiline);
+var vendor = vendorMatch.Success
+    ? vendorMatch.Groups[1].Value.Trim()
+    : "Unknown";
 
-        // =========================
-        // AI PARSING (REGEX INTELLIGENCE)
-        // =========================
-
-        // Vendor = first line
-        var vendorMatch = Regex.Match(extractedText, @"^(.*)", RegexOptions.Multiline);
-        var vendor = vendorMatch.Success ? vendorMatch.Groups[1].Value.Trim() : "Unknown";
-
-        // Invoice number (pattern like 20-3592 or INV-1234)
+// =========================
+// INVOICE NUMBER (pattern based)
+// =========================
 var invoiceMatch = Regex.Match(
     extractedText,
-    @"Invoice\s*(No|#)?[:\s]*(\d{2}-\d{4})",
-    RegexOptions.IgnoreCase);
+    @"\b\d{2}-\d{4}\b");
 
 var invoiceNumber = invoiceMatch.Success
-    ? invoiceMatch.Groups[2].Value.Trim()
+    ? invoiceMatch.Value.Trim()
     : "";
 
-        // Date like August 1, 2025
+// =========================
+// INVOICE DATE (first Month-name date found)
+// =========================
 DateTime? invoiceDate = null;
 
-// FIRST: Try labeled "Invoice Date"
-var labeledDateMatch = Regex.Match(
+var dateMatch = Regex.Match(
     extractedText,
-    @"Invoice\s*Date[:\s]*(\d{4}-\d{2}-\d{2})",
-    RegexOptions.IgnoreCase);
+    @"\b[A-Za-z]+\s+\d{1,2},\s+\d{4}\b");
 
-if (labeledDateMatch.Success &&
-    DateTime.TryParse(labeledDateMatch.Groups[1].Value, out var parsedDate1))
+if (dateMatch.Success &&
+    DateTime.TryParse(dateMatch.Value, out var parsedDate))
 {
-    invoiceDate = parsedDate1;
+    invoiceDate = parsedDate;
+}
+// =========================
+// TOTAL AMOUNT (Smart Label Extraction)
+// =========================
+decimal? amount = null;
+
+// Try to extract from "Amount Due"
+var amountDueMatch = Regex.Match(
+    extractedText,
+    @"Amount\s*Due.*?\bR(\d{1,3}(?:,\d{3})*\.\d{2})",
+    RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+if (amountDueMatch.Success)
+{
+    var clean = amountDueMatch.Groups[1].Value.Replace(",", "");
+    if (decimal.TryParse(clean, out var parsed))
+        amount = parsed;
 }
 
-// SECOND: Fallback – look for ISO date anywhere
-if (invoiceDate == null)
+// If not found, fallback to "Total:"
+if (amount == null)
 {
-    var isoMatch = Regex.Match(
+    var totalMatch = Regex.Match(
         extractedText,
-        @"\b(\d{4}-\d{2}-\d{2})\b");
+        @"Total.*?\bR(\d{1,3}(?:,\d{3})*\.\d{2})",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-    if (isoMatch.Success &&
-        DateTime.TryParse(isoMatch.Groups[1].Value, out var parsedDate2))
+    if (totalMatch.Success)
     {
-        invoiceDate = parsedDate2;
+        var clean = totalMatch.Groups[1].Value.Replace(",", "");
+        if (decimal.TryParse(clean, out var parsed))
+            amount = parsed;
     }
 }
+    string documentType = extractedText.ToLower().Contains("credit")
+        ? "CreditNote"
+        : "Invoice";
 
-        // Total Amount
-        var amountMatch = Regex.Match(extractedText,
-            @"Total:\s*\n?\s*R?(\d{1,3}(?:,\d{3})*\.\d{2})",
-            RegexOptions.IgnoreCase);
+    // =========================
+    // DUPLICATE CHECK (Vendor + Invoice)
+    // =========================
+    if (!string.IsNullOrWhiteSpace(vendor) &&
+        !string.IsNullOrWhiteSpace(invoiceNumber))
+    {
+        var duplicate = await _context.Documents
+            .FirstOrDefaultAsync(d =>
+                d.Vendor == vendor &&
+                d.InvoiceNumber == invoiceNumber);
 
-        decimal? amount = null;
-        if (amountMatch.Success)
-        {
-            var cleanAmount = amountMatch.Groups[1].Value.Replace(",", "");
-            if (decimal.TryParse(cleanAmount, out var parsedAmount))
-                amount = parsedAmount;
-        }
-
-        // Auto detect document type
-        string documentType = extractedText.ToLower().Contains("credit")
-            ? "CreditNote"
-            : "Invoice";
-
-        // =========================
-        // DUPLICATE CHECK (Vendor + Invoice)
-        // =========================
-        if (!string.IsNullOrWhiteSpace(vendor) &&
-            !string.IsNullOrWhiteSpace(invoiceNumber))
-        {
-            var duplicate = await _context.Documents
-                .FirstOrDefaultAsync(d =>
-                    d.Vendor == vendor &&
-                    d.InvoiceNumber == invoiceNumber);
-
-            if (duplicate != null)
-                return Conflict("Duplicate invoice detected.");
-        }
-
-        // =========================
-        // SAVE DOCUMENT
-        // =========================
-        var document = new Document
-        {
-            FileName = file.FileName,
-            FilePath = path,
-            DocumentType = documentType,
-            Vendor = vendor,
-            InvoiceNumber = invoiceNumber,
-            InvoiceDate = invoiceDate,
-            Amount = amount,
-            FileHash = hash,
-            UploadedByUserId = userId,
-            Status = DocumentStatus.PendingReviewer
-        };
-
-        _context.Documents.Add(document);
-        await _context.SaveChangesAsync();
-
-        return Ok(document);
+        if (duplicate != null)
+            return Conflict("Duplicate invoice detected.");
     }
+
+    // =========================
+    // SAVE DOCUMENT
+    // =========================
+    var document = new Document
+    {
+        FileName = file.FileName,
+        FilePath = path,
+        DocumentType = documentType,
+        Vendor = vendor,
+        InvoiceNumber = invoiceNumber,
+        InvoiceDate = invoiceDate,
+        Amount = amount,
+        FileHash = hash,
+        UploadedByUserId = userId,
+        Status = DocumentStatus.PendingReviewer
+    };
+
+    _context.Documents.Add(document);
+    await _context.SaveChangesAsync();
+
+    return Ok(document);
+}
 
     // =========================
     // APPROVAL FLOW
