@@ -100,8 +100,14 @@ public class DocumentsController : ControllerBase
         var vendor = vendorMatch.Success ? vendorMatch.Groups[1].Value.Trim() : "Unknown";
 
         // Invoice number (pattern like 20-3592 or INV-1234)
-        var invoiceMatch = Regex.Match(extractedText, @"\b([A-Z0-9-]{5,})\b");
-        var invoiceNumber = invoiceMatch.Success ? invoiceMatch.Value : "";
+var invoiceMatch = Regex.Match(
+    extractedText,
+    @"Invoice\s*(No|#)?[:\s]*([A-Z0-9\-]+)",
+    RegexOptions.IgnoreCase);
+
+var invoiceNumber = invoiceMatch.Success
+    ? invoiceMatch.Groups[2].Value.Trim()
+    : "";
 
         // Date like August 1, 2025
         var dateMatch = Regex.Match(extractedText, @"[A-Za-z]+\s\d{1,2},\s\d{4}");
