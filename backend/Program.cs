@@ -5,9 +5,13 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using backend;
 using backend.Services;
+using OfficeOpenXml;
 
+
+ExcelPackage.License.SetNonCommercialPersonal("Mihir Singh");
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 
 builder.Services.AddCors(options =>
@@ -78,7 +82,10 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = false,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key)
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+
+        RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+        NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
     };
 });
 

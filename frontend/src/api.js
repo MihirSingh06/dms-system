@@ -1,6 +1,4 @@
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  "https://dms-system-iixe.onrender.com";
+const API_BASE = "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev";
 
 export async function login(username, password) {
   const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -96,7 +94,7 @@ export async function approveDocument(id) {
   return response.json();
 }
 
-export async function rejectDocument(id) {
+export async function rejectDocument(id, reason) {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
@@ -105,7 +103,9 @@ export async function rejectDocument(id) {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
       },
+      body: JSON.stringify(reason)
     }
   );
 
@@ -115,7 +115,6 @@ export async function rejectDocument(id) {
   }
 
   return response.json();
-
 }
 
   export async function getSpendSummary() {
@@ -220,12 +219,66 @@ export async function getVatReport() {
   return response.json();
 }
 
-export function exportExcel() {
+
+export async function getDocumentHistory(id) {
   const token = localStorage.getItem("token");
-  window.open(`${API_BASE}/api/reports/export-excel?token=${token}`, "_blank");
+
+  const response = await fetch(
+    `${API_BASE}/api/documents/${id}/history`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch document history");
+  }
+
+  return response.json();
 }
 
-export function exportPdf() {
+export async function exportExcel() {
   const token = localStorage.getItem("token");
-  window.open(`${API_BASE}/api/reports/export-pdf?token=${token}`, "_blank");
+
+  const response = await fetch(`${API_BASE}/api/reports/export-excel`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to export Excel");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Report.xlsx";
+  a.click();
+}
+
+export async function exportPdf() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_BASE}/api/reports/export-pdf`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to export PDF");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Report.pdf";
+  a.click();
 }

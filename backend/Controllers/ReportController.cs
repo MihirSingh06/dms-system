@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ClosedXML.Excel;
 using System.IO;
+using OfficeOpenXml;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
 
 namespace backend.Controllers;
 
@@ -278,4 +282,61 @@ public async Task<IActionResult> AiInsights()
     return Ok(insights);
 }
 
+[HttpGet("export-excel")]
+public async Task<IActionResult> ExportExcel()
+{
+    var documents = await _context.Documents.ToListAsync();
+
+    using var package = new ExcelPackage();
+    var worksheet = package.Workbook.Worksheets.Add("Report");
+
+    worksheet.Cells[1, 1].Value = "Vendor";
+    worksheet.Cells[1, 2].Value = "Invoice";
+    worksheet.Cells[1, 3].Value = "Amount";
+    worksheet.Cells[1, 4].Value = "Status";
+
+    for (int i = 0; i < documents.Count; i++)
+    {
+        worksheet.Cells[i + 2, 1].Value = documents[i].Vendor;
+        worksheet.Cells[i + 2, 2].Value = documents[i].InvoiceNumber;
+        worksheet.Cells[i + 2, 3].Value = documents[i].Amount;
+        worksheet.Cells[i + 2, 4].Value = documents[i].Status.ToString();
+    }
+
+    var bytes = package.GetAsByteArray();
+    return File(bytes,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Report.xlsx");
+}
+
+[HttpGet("export-pdf")]
+[Authorize]
+public async Task<IActionResult> ExportPdf()
+{
+    var documents = await _context.Documents.ToListAsync();
+
+    using var stream = new MemoryStream();
+
+    using (var writer = new PdfWriter(stream))
+    {
+        var pdf = new PdfDocument(writer);
+        var document = new iText.Layout.Document(pdf);
+
+        document.Add(new Paragraph("DMS Report"));
+        document.Add(new Paragraph(" "));
+
+        foreach (var doc in documents)
+        {
+            document.Add(new Paragraph(
+                $"{doc.Vendor} | {doc.InvoiceNumber} | {doc.Amount} | {doc.Status}"
+            ));
+        }
+
+        document.Close();
+    }
+
+    var bytes = stream.ToArray();
+
+    return File(bytes, "application/pdf", "Report.pdf");
+}
 }

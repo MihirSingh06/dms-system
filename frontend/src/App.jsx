@@ -14,9 +14,11 @@ import {
   getVendorAnalysis,
   getVatReport,
   exportExcel,
-  exportPdf
+  exportPdf,
+  getDocumentHistory,
 } from "./api";
 import "./App.css";
+
 
 function App() {
   const [username, setUsername] = useState("");
@@ -49,6 +51,12 @@ function App() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterMinAmount, setFilterMinAmount] = useState("");
   const [filterMaxAmount, setFilterMaxAmount] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectDocId, setRejectDocId] = useState(null);
+  const [history, setHistory] = useState({});
+
+  
 
   // =========================
   // LOAD DASHBOARD DATA
@@ -70,12 +78,14 @@ function App() {
   const handleLogin = async () => {
     try {
       const data = await login(username, password);
+      console.log("LOGIN RESPONSE:", data); 
       localStorage.setItem("token", data.token);
 
       const payload = JSON.parse(atob(data.token.split(".")[1]));
       setUserRole(
         payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"]
       );
+      console.log("TOKEN PAYLOAD:", payload);
 
       setIsLoggedIn(true);
       setMessage("");
@@ -145,11 +155,38 @@ function App() {
     getStatusSummary().then(setSummary);
   };
 
-  const handleReject = async (id) => {
-    await rejectDocument(id);
+const submitRejection = async () => {
+  if (!rejectReason.trim()) {
+    alert("Rejection reason is required.");
+    return;
+  }
+
+  try {
+    await rejectDocument(rejectDocId, rejectReason);
+
+    setShowRejectModal(false);
+    setRejectReason("");
+    setRejectDocId(null);
+
     getDocuments().then(setDocuments);
     getStatusSummary().then(setSummary);
-  };
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+const loadHistory = async (docId) => {
+  try {
+    const data = await getDocumentHistory(docId);
+
+    setHistory((prev) => ({
+      ...prev,
+      [docId]: data
+    }));
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
   // =========================
   // LOGIN SCREEN
@@ -341,32 +378,113 @@ function App() {
       <button onClick={handleUpload}>Upload</button>
       <div>{uploadMessage}</div>
 
-      <h2>Documents</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Vendor</th>
-            <th>Invoice</th>
-            <th>Amount</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((doc) => (
-            <tr key={doc.id}>
-              <td>{doc.id}</td>
-              <td>{doc.vendor}</td>
-              <td>{doc.invoiceNumber}</td>
-              <td>{doc.amount}</td>
-              <td>{doc.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+<h2>Documents</h2>
 
+{documents.length === 0 ? (
+  <p>No documents found.</p>
+) : (
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Vendor</th>
+        <th>Invoice</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Actions</th>
+        <th>Rejection Reason</th>
+      </tr>
+    </thead>
+<tbody>
+  {documents.map((doc) => (
+    <>
+      <tr key={doc.id}>
+        <td>{doc.id}</td>
+        <td>{doc.vendor}</td>
+        <td>{doc.invoiceNumber}</td>
+        <td>{doc.amount}</td>
+        <td>{doc.status}</td>
+        <td>
+          {(
+            (doc.status === "PendingReviewer" && userRole === "Reviewer") ||
+            (doc.status === "PendingManager" && userRole === "Manager") ||
+            (doc.status === "PendingFinance" && userRole === "Finance")
+          ) && (
+            <>
+              <button onClick={() => handleApprove(doc.id)}>
+                Approve
+              </button>
+
+              <button
+                onClick={() => {
+                  setRejectDocId(doc.id);
+                  setShowRejectModal(true);
+                }}
+              >
+                Reject
+              </button>
+            </>
+          )}
+
+          <button
+            style={{ marginLeft: 8 }}
+            onClick={() => loadHistory(doc.id)}
+          >
+            View History
+          </button>
+        </td>
+      </tr>
+
+      {/* STEP 4 GOES HERE */}
+      {history[doc.id] && (
+        <tr>
+          <td colSpan="6">
+            <div style={{ background: "#f4f4f4", padding: 10 }}>
+              {history[doc.id].map((h, index) => (
+                <div key={index}>
+                  <strong>{h.role}</strong> - {h.action}
+                  {h.reason && ` (Reason: ${h.reason})`}
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  ))}
+</tbody>
+  </table>
+)}
+
+{showRejectModal && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <h3>Reject Document</h3>
+
+      <textarea
+        placeholder="Enter rejection reason..."
+        value={rejectReason}
+        onChange={(e) => setRejectReason(e.target.value)}
+        rows={4}
+        style={{ width: "100%" }}
+      />
+
+      <div style={{ marginTop: 10 }}>
+        <button onClick={submitRejection}>Submit</button>
+        <button
+          onClick={() => {
+            setShowRejectModal(false);
+            setRejectReason("");
+          }}
+          style={{ marginLeft: 10 }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
-
 export default App;

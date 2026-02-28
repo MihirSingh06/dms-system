@@ -265,4 +265,22 @@ if (amount == null)
     {
         return Ok(await _context.Documents.ToListAsync());
     }
+
+[HttpGet("{id}/history")]
+public async Task<IActionResult> GetHistory(int id)
+{
+    var history = await _context.ApprovalHistories
+        .Where(h => h.DocumentId == id)
+        .OrderBy(h => h.Timestamp)
+        .Select(h => new {
+            h.Role,
+            h.Action,
+            h.Reason,
+            h.Timestamp
+        })
+        .ToListAsync();
+
+    return Ok(history);
+}
+
 }
