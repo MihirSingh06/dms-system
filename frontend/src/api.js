@@ -197,3 +197,35 @@ export async function getAiInsights() {
 
   return response.json();
 }
+
+export async function getVendorAnalysis() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_BASE}/api/reports/vendor-analysis`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) throw new Error("Failed to fetch vendor analysis");
+  return response.json();
+}
+
+export async function getVatReport() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_BASE}/api/reports/vat-report`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) throw new Error("Failed to fetch VAT report");
+  return response.json();
+}
+
+export function exportExcel() {
+  const token = localStorage.getItem("token");
+  window.open(`${API_BASE}/api/reports/export-excel?token=${token}`, "_blank");
+}
+
+export function exportPdf() {
+  const token = localStorage.getItem("token");
+  window.open(`${API_BASE}/api/reports/export-pdf?token=${token}`, "_blank");
+}

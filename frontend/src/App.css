@@ -98,6 +98,22 @@ tr:hover {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
   transition: transform 0.15s ease;
 }
+/* Status color accents */
+.status-pending {
+  border-left: 6px solid #f59e0b; /* amber */
+}
+
+.status-approved {
+  border-left: 6px solid #10b981; /* green */
+}
+
+.status-rejected {
+  border-left: 6px solid #ef4444; /* red */
+}
+
+.status-total {
+  border-left: 6px solid #3b82f6; /* blue */
+}
 
 .summary-card:hover {
   transform: translateY(-3px);
@@ -200,19 +216,3 @@ tr:hover {
   background: #dc2626;
 }
 
-/* Status color accents */
-.status-pending {
-  border-left: 6px solid #f59e0b; /* amber */
-}
-
-.status-approved {
-  border-left: 6px solid #10b981; /* green */
-}
-
-.status-rejected {
-  border-left: 6px solid #ef4444; /* red */
-}
-
-.status-total {
-  border-left: 6px solid #3b82f6; /* blue */
-}

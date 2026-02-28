@@ -10,7 +10,11 @@ import {
   getSpendSummary,
   extractOcr,
   getFilteredReport,
-  getAiInsights
+  getAiInsights,
+  getVendorAnalysis,
+  getVatReport,
+  exportExcel,
+  exportPdf
 } from "./api";
 import "./App.css";
 
@@ -35,6 +39,9 @@ function App() {
   const [userRole, setUserRole] = useState(null);
 
   const [reportData, setReportData] = useState(null);
+  const [vendorAnalysis, setVendorAnalysis] = useState([]);
+  const [vatReport, setVatReport] = useState(null);
+  const [aiInsights, setAiInsights] = useState([]);
 
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -42,36 +49,24 @@ function App() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterMinAmount, setFilterMinAmount] = useState("");
   const [filterMaxAmount, setFilterMaxAmount] = useState("");
-  const [aiInsights, setAiInsights] = useState([]);
 
-const handleFilter = async () => {
-  try {
-    const data = await getFilteredReport({
-      startDate: filterStartDate,
-      endDate: filterEndDate,
-      vendor: filterVendor,
-      status: filterStatus,
-      minAmount: filterMinAmount,
-      maxAmount: filterMaxAmount,
-    });
-
-    setReportData(data);
-  } catch (error) {
-    alert(error.message);
-  }
-};
-
-  // Load data when logged in
+  // =========================
+  // LOAD DASHBOARD DATA
+  // =========================
   useEffect(() => {
     if (isLoggedIn) {
-      getStatusSummary().then(setSummary).catch(() => setSummary(null));
-      getDocuments().then(setDocuments).catch(() => setDocuments([]));
-      getSpendSummary().then(setSpendData).catch(() => setSpendData(null));
-      getAiInsights().then(setAiInsights).catch(() => setAiInsights([]));
+      getStatusSummary().then(setSummary);
+      getDocuments().then(setDocuments);
+      getSpendSummary().then(setSpendData);
+      getAiInsights().then((data) =>
+        setAiInsights(Array.isArray(data) ? data : [])
+      );
     }
-
   }, [isLoggedIn]);
 
+  // =========================
+  // LOGIN
+  // =========================
   const handleLogin = async () => {
     try {
       const data = await login(username, password);
@@ -92,15 +87,31 @@ const handleFilter = async () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
-    setUsername("");
-    setPassword("");
   };
 
+  // =========================
+  // FILTER REPORT
+  // =========================
+  const handleFilter = async () => {
+    const data = await getFilteredReport({
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+      vendor: filterVendor,
+      status: filterStatus,
+      minAmount: filterMinAmount,
+      maxAmount: filterMaxAmount,
+    });
+
+    setReportData(data);
+  };
+
+  // =========================
+  // UPLOAD DOCUMENT
+  // =========================
   const handleUpload = async () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("documentType", "Invoice");
       formData.append("vendor", vendor);
       formData.append("invoiceNumber", invoiceNumber);
       formData.append("invoiceDate", invoiceDate);
@@ -117,36 +128,32 @@ const handleFilter = async () => {
       setVatAmount("");
       setFile(null);
 
-      getStatusSummary().then(setSummary);
       getDocuments().then(setDocuments);
+      getStatusSummary().then(setSummary);
       getSpendSummary().then(setSpendData);
     } catch (error) {
       setUploadMessage(error.message);
     }
   };
 
+  // =========================
+  // APPROVAL
+  // =========================
   const handleApprove = async (id) => {
-    try {
-      await approveDocument(id);
-      getDocuments().then(setDocuments);
-      getStatusSummary().then(setSummary);
-      getSpendSummary().then(setSpendData);
-    } catch (error) {
-      alert(error.message);
-    }
+    await approveDocument(id);
+    getDocuments().then(setDocuments);
+    getStatusSummary().then(setSummary);
   };
 
   const handleReject = async (id) => {
-    try {
-      await rejectDocument(id);
-      getDocuments().then(setDocuments);
-      getStatusSummary().then(setSummary);
-      getSpendSummary().then(setSpendData);
-    } catch (error) {
-      alert(error.message);
-    }
+    await rejectDocument(id);
+    getDocuments().then(setDocuments);
+    getStatusSummary().then(setSummary);
   };
 
+  // =========================
+  // LOGIN SCREEN
+  // =========================
   if (!isLoggedIn) {
     return (
       <div style={{ padding: 40 }}>
@@ -165,33 +172,34 @@ const handleFilter = async () => {
         />
         <br /><br />
         <button onClick={handleLogin}>Login</button>
-        <div style={{ marginTop: 20, color: "red" }}>{message}</div>
+        <div style={{ color: "red" }}>{message}</div>
       </div>
     );
   }
 
-return (
-  <div className="dashboard-container">
+  // =========================
+  // DASHBOARD
+  // =========================
+  return (
+    <div className="dashboard-container">
 
-    <div className="topbar">
-      <div className="topbar-title">
-        Document Management System
-      </div>
+      <div className="topbar">
+  <div className="topbar-title">
+    Document Management System
+  </div>
 
-      <div className="topbar-right">
-        <div className="role-badge">
-          {userRole}
-        </div>
-
-        <button className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button>
-      </div>
+  <div className="topbar-right">
+    <div className="role-badge">
+      {userRole}
     </div>
 
-    <hr />
-  <h2>Status Summary</h2>
+    <button className="logout-btn" onClick={handleLogout}>
+      Logout
+    </button>
+  </div>
+</div>
 
+      <h2>Status Summary</h2>
 {summary && (
   <div className="summary-grid">
     <div className="summary-card status-pending">
@@ -226,153 +234,122 @@ return (
   </div>
 )}
 
-    <h2>Spend Overview</h2>
-    <SpendChart data={spendData} />
+      <h2>Spend Overview</h2>
+      <SpendChart data={spendData} />
 
-    <hr />
+      <h2>AI Insights</h2>
+      {aiInsights.length > 0 ? (
+        <ul>
+          {aiInsights.map((i, idx) => (
+            <li key={idx}>{i}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No insights available.</p>
+      )}
 
-    <h2>AI Insights</h2>
+<h2>Vendor Analysis</h2>
+<button
+  className="logout-btn"
+  onClick={async () => {
+    const data = await getVendorAnalysis();
+    setVendorAnalysis(data);
+  }}
+>
+  Load Vendor Analysis
+</button>
 
-{Array.isArray(aiInsights) && aiInsights.length > 0 ? (
-  <ul>
-    {aiInsights.map((insight, index) => (
-      <li key={index}>{insight}</li>
-    ))}
-  </ul>
-) : (
-  <p>No insights available.</p>
+{vendorAnalysis.length > 0 && (
+  <table style={{ marginTop: 15 }}>
+    <thead>
+      <tr>
+        <th>Vendor</th>
+        <th>Total Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {vendorAnalysis.map((v, index) => (
+        <tr key={index}>
+          <td>{v.vendor}</td>
+          <td>{v.totalAmount}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
 )}
 
-    <hr />
+<hr />
 
-    <h2>Report Filters</h2>
-
-    <div style={{ display: "grid", gap: 10, maxWidth: 400 }}>
-      <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
-      <input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
-      <input placeholder="Vendor" value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)} />
-
-      <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-        <option value="">All Status</option>
-        <option value="PendingReviewer">Pending Reviewer</option>
-        <option value="PendingManager">Pending Manager</option>
-        <option value="PendingFinance">Pending Finance</option>
-        <option value="Approved">Approved</option>
-        <option value="Rejected">Rejected</option>
-      </select>
-
-      <input type="number" placeholder="Min Amount" value={filterMinAmount} onChange={(e) => setFilterMinAmount(e.target.value)} />
-      <input type="number" placeholder="Max Amount" value={filterMaxAmount} onChange={(e) => setFilterMaxAmount(e.target.value)} />
-
-      <button onClick={handleFilter}>Apply Filters</button>
-    </div>
-
-    {reportData && (
-      <div style={{ marginTop: 20 }}>
-        <h3>Filtered Results</h3>
-        <p>Count: {reportData.count}</p>
-        <p>Total Amount: {reportData.totalAmount}</p>
-        <p>Total VAT: {reportData.totalVat}</p>
-      </div>
-    )}
-
-    <hr />
-
-    <h2>Upload Document</h2>
-
-    <input
-      placeholder="Vendor"
-      value={vendor}
-      onChange={(e) => setVendor(e.target.value)}
-    />
-
-    <input
-      placeholder="Invoice Number"
-      value={invoiceNumber}
-      onChange={(e) => setInvoiceNumber(e.target.value)}
-    />
-
-    <input
-      type="date"
-      value={invoiceDate}
-      onChange={(e) => setInvoiceDate(e.target.value)}
-    />
-
-    <input
-      type="number"
-      placeholder="Amount"
-      value={amount}
-      onChange={(e) => setAmount(e.target.value)}
-    />
-
-    <input
-      type="number"
-      placeholder="VAT Amount"
-      value={vatAmount}
-      onChange={(e) => setVatAmount(e.target.value)}
-    />
-
-<input
-  type="file"
-  onChange={async (e) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    setFile(selectedFile);
-
-    try {
-      const data = await extractOcr(selectedFile);
-
-      setVendor(data.vendor || "");
-      setInvoiceNumber(data.invoiceNumber || "");
-
-      // Proper date conversion for <input type="date" />
-      if (data.invoiceDate) {
-        const parsedDate = new Date(data.invoiceDate);
-
-        if (!isNaN(parsedDate)) {
-          const formatted =
-            parsedDate.getFullYear() +
-            "-" +
-            String(parsedDate.getMonth() + 1).padStart(2, "0") +
-            "-" +
-            String(parsedDate.getDate()).padStart(2, "0");
-
-          setInvoiceDate(formatted);
-        } else {
-          setInvoiceDate("");
-        }
-      } else {
-        setInvoiceDate("");
-      }
-
-      setAmount(data.amount || "");
-      setVatAmount(data.vatAmount || "");
-    } catch (error) {
-      console.error("OCR failed:", error);
-    }
+<h2>VAT Report</h2>
+<button
+  className="logout-btn"
+  onClick={async () => {
+    const data = await getVatReport();
+    setVatReport(data);
   }}
-/>
+>
+  Load VAT Report
+</button>
 
-    <button onClick={handleUpload}>Upload</button>
-    <div>{uploadMessage}</div>
+{vatReport && (
+  <div style={{ marginTop: 15 }}>
+    <p><strong>Total Net:</strong> {vatReport.totalNet}</p>
+    <p><strong>Total VAT:</strong> {vatReport.totalVat}</p>
+    <p><strong>Total Gross:</strong> {vatReport.totalGross}</p>
+  </div>
+)}
 
-    <hr />
+<hr />
 
-    <h2>Documents</h2>
+<h2>Export Reports</h2>
+<button className="logout-btn" onClick={exportExcel}>
+  Export Excel
+</button>
+<button className="logout-btn" onClick={exportPdf}>
+  Export PDF
+</button>
 
-    {documents.length === 0 ? (
-      <p>No documents found.</p>
-    ) : (
+      <h2>Upload Document</h2>
+
+      <input type="file" onChange={async (e) => {
+        const selectedFile = e.target.files?.[0];
+        if (!selectedFile) return;
+        setFile(selectedFile);
+
+        const data = await extractOcr(selectedFile);
+
+        setVendor(data.vendor || "");
+        setInvoiceNumber(data.invoiceNumber || "");
+
+        if (data.invoiceDate) {
+          const d = new Date(data.invoiceDate);
+          if (!isNaN(d)) {
+            setInvoiceDate(d.toISOString().split("T")[0]);
+          }
+        }
+
+        setAmount(data.amount || "");
+        setVatAmount(data.vatAmount || "");
+      }} />
+
+      <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+      <input placeholder="Vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
+      <input placeholder="Invoice #" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+      <input placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      <input placeholder="VAT" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} />
+
+      <button onClick={handleUpload}>Upload</button>
+      <div>{uploadMessage}</div>
+
+      <h2>Documents</h2>
       <table>
         <thead>
           <tr>
             <th>ID</th>
             <th>Vendor</th>
-            <th>Invoice #</th>
+            <th>Invoice</th>
             <th>Amount</th>
             <th>Status</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -383,29 +360,13 @@ return (
               <td>{doc.invoiceNumber}</td>
               <td>{doc.amount}</td>
               <td>{doc.status}</td>
-              <td>
-                {(
-                  (doc.status === "PendingReviewer" && userRole === "Reviewer") ||
-                  (doc.status === "PendingManager" && userRole === "Manager") ||
-                  (doc.status === "PendingFinance" && userRole === "Finance")
-                ) && (
-                  <>
-                    <button onClick={() => handleApprove(doc.id)}>
-                      Approve
-                    </button>
-                    <button onClick={() => handleReject(doc.id)}>
-                      Reject
-                    </button>
-                  </>
-                )}
-              </td>
             </tr>
           ))}
         </tbody>
       </table>
-    )}
-  </div>
-);
+
+    </div>
+  );
 }
 
 export default App;
