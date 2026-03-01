@@ -21,6 +21,7 @@ builder.Services.AddCors(options =>
         {
             policy.WithOrigins(
                 "https://dms-system-ruby.vercel.app",
+                "https://ideal-xylophone-5p6g9x779qjhjgj-5173.app.github.dev",
                 "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev"
             )
             .AllowAnyHeader()

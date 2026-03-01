@@ -1,4 +1,6 @@
-const API_BASE = "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev";
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev";
 
 export async function login(username, password) {
   const response = await fetch(`${API_BASE}/api/auth/login`, {
