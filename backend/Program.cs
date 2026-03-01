@@ -19,10 +19,12 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy
-                .SetIsOriginAllowed(origin => true)
-                .AllowAnyHeader()
-                .AllowAnyMethod();
+            policy.WithOrigins(
+                "https://dms-system-ruby.vercel.app",
+                "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
         });
 });
 
