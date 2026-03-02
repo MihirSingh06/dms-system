@@ -283,4 +283,29 @@ public async Task<IActionResult> GetHistory(int id)
     return Ok(history);
 }
 
+[HttpGet("{id}/file")]
+[Authorize]
+public async Task<IActionResult> GetFile(int id)
+{
+    var document = await _context.Documents.FindAsync(id);
+    if (document == null)
+        return NotFound();
+
+    if (!System.IO.File.Exists(document.FilePath))
+        return NotFound("File not found on server.");
+
+    var bytes = await System.IO.File.ReadAllBytesAsync(document.FilePath);
+
+    var contentType = "application/octet-stream";
+
+    if (document.FileName.EndsWith(".pdf"))
+        contentType = "application/pdf";
+    else if (document.FileName.EndsWith(".png"))
+        contentType = "image/png";
+    else if (document.FileName.EndsWith(".jpg") || document.FileName.EndsWith(".jpeg"))
+        contentType = "image/jpeg";
+
+    return File(bytes, contentType, document.FileName);
+}
+
 }

@@ -284,3 +284,28 @@ export async function exportPdf() {
   a.download = "Report.pdf";
   a.click();
 }
+
+export async function downloadDocumentFile(id, fileName) {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(
+    `${API_BASE}/api/documents/${id}/file`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to download file");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+}

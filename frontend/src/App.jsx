@@ -1,3 +1,4 @@
+import { downloadDocumentFile } from "./api";
 import { useState, useEffect } from "react";
 import SpendChart from "./Components/SpendChart";
 import {
@@ -393,6 +394,7 @@ const loadHistory = async (docId) => {
         <th>Status</th>
         <th>Actions</th>
         <th>Rejection Reason</th>
+        <th>File</th>
       </tr>
     </thead>
 <tbody>
@@ -435,7 +437,6 @@ const loadHistory = async (docId) => {
         </td>
       </tr>
 
-      {/* STEP 4 GOES HERE */}
       {history[doc.id] && (
         <tr>
           <td colSpan="6">
@@ -450,6 +451,17 @@ const loadHistory = async (docId) => {
           </td>
         </tr>
       )}
+      <td>
+  <td>
+  <button
+    onClick={() =>
+      downloadDocumentFile(doc.id, doc.fileName)
+    }
+  >
+    Download
+  </button>
+</td>
+</td>
     </>
   ))}
 </tbody>
