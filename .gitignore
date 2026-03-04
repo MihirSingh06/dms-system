@@ -15,3 +15,5 @@ obj/
 # OS files
 .DS_Store
 Thumbs.db
+backend/uploads/
+backend/dms.db
