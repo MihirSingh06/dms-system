@@ -31,19 +31,40 @@ public class AiExtractionService
             return null;
         }
 
-        var prompt = $@"
-Extract the following fields from this invoice text.
-Return ONLY valid JSON. Do NOT wrap in markdown.
+        // Limit OCR text sent to AI (improves accuracy)
+    var shortenedText = extractedText.Length > 1500
+    ? extractedText.Substring(0, 1500)
+    : extractedText;
 
-Fields:
-- vendor
-- invoiceNumber
-- invoiceDate (ISO format yyyy-MM-dd)
-- vatAmount
-- amount
+        
 
-Invoice text:
-{extractedText}
+var prompt = $@"
+Extract the following fields from the invoice text.
+
+Return JSON ONLY in this format:
+
+{{
+  ""vendor"": """",
+  ""invoiceNumber"": """",
+  ""invoiceDate"": """",
+  ""amount"": """",
+  ""vatAmount"": """"
+}}
+
+Rules:
+- Invoice number may appear as DOCUMENT NO, INVOICE NO, or TAX INVOICE.
+- Invoice date may appear as DATE or DATE/TIME.
+- Amount must be the TOTAL amount of the invoice.
+- VAT must be the VAT amount only.
+- Ignore subtotal and paid amounts.
+- The invoice TOTAL is usually labeled TOTAL, TOTAL(incl), or AMOUNT DUE.
+- Always prefer TOTAL over SUBTOTAL or line totals.
+- VAT is usually labeled VAT, TAX, or VAT@.
+- Ignore values labeled SUBTOTAL, BALANCE, PAID, or CHANGE.
+- If multiple numbers appear, select the final TOTAL amount of the invoice.
+
+Invoice Text:
+{shortenedText}
 ";
 
         var requestBody = new

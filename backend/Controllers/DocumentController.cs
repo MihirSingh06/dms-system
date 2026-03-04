@@ -114,28 +114,38 @@ public class DocumentsController : ControllerBase
             }
 
             // Amount (clean R and commas)
-            if (!string.IsNullOrWhiteSpace(aiResult.Amount))
-            {
-                var cleaned = aiResult.Amount
-                    .Replace("R", "")
-                    .Replace(",", "")
-                    .Trim();
+if (!string.IsNullOrWhiteSpace(aiResult.Amount))
+{
+    var cleaned = aiResult.Amount
+        .Replace("R", "")
+        .Replace(",", "")
+        .Trim();
 
-                if (decimal.TryParse(cleaned, out var parsedAmount))
-                    amount = parsedAmount;
-            }
+    if (!cleaned.Contains(".") && cleaned.Length > 2)
+    {
+        cleaned = cleaned.Insert(cleaned.Length - 2, ".");
+    }
 
+    if (decimal.TryParse(cleaned, out var parsedAmount))
+        amount = parsedAmount;
+}
             // VAT (clean R and commas)
-            if (!string.IsNullOrWhiteSpace(aiResult.VatAmount))
-            {
-                var cleanedVat = aiResult.VatAmount
-                    .Replace("R", "")
-                    .Replace(",", "")
-                    .Trim();
+if (!string.IsNullOrWhiteSpace(aiResult.VatAmount))
+{
+    var cleanedVat = aiResult.VatAmount
+        .Replace("R", "")
+        .Replace(",", "")
+        .Trim();
 
-                if (decimal.TryParse(cleanedVat, out var parsedVat))
-                    vatAmount = parsedVat;
-            }
+    // Fix OCR issue like 33222 -> 332.22
+    if (!cleanedVat.Contains(".") && cleanedVat.Length > 2)
+    {
+        cleanedVat = cleanedVat.Insert(cleanedVat.Length - 2, ".");
+    }
+
+    if (decimal.TryParse(cleanedVat, out var parsedVat))
+        vatAmount = parsedVat;
+}
         }
 
         // =========================
@@ -161,7 +171,7 @@ public class DocumentsController : ControllerBase
         {
             var dateMatch = Regex.Match(
                 extractedText,
-                @"\b[A-Za-z]+\s+\d{1,2},\s+\d{4}\b");
+                @"\b\d{2}\.\d{2}\.\d{4}\b");
 
             if (dateMatch.Success &&
                 DateTime.TryParse(dateMatch.Value, out var parsedDate))
