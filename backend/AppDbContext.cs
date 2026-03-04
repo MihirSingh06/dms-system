@@ -5,6 +5,7 @@ namespace backend;
 
 public class AppDbContext : DbContext
 {
+  
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
     {
@@ -13,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<ApprovalHistory> ApprovalHistories => Set<ApprovalHistory>();
+    public DbSet<DocumentHistory> DocumentHistories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
 {

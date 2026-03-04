@@ -7,13 +7,29 @@ using backend;
 using backend.Services;
 using OfficeOpenXml;
 
-
+// EPPlus License (Required for v8+)
 ExcelPackage.License.SetNonCommercialPersonal("Mihir Singh");
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ✅ IMPORTANT: Ensure environment variables are loaded
+builder.Configuration.AddEnvironmentVariables();
 
+// =========================
+// SERVICES
+// =========================
 
+builder.Services.AddScoped<AiExtractionService>();
+builder.Services.AddScoped<FileService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddHttpClient<OcrService>();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=dms.db"));
+
+// =========================
+// CORS
+// =========================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
@@ -22,20 +38,29 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(
                 "https://dms-system-ruby.vercel.app",
                 "https://ideal-xylophone-5p6g9x779qjhjgj-5173.app.github.dev",
-                "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev"
+                "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev",
+                "http://localhost:5173"
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
         });
 });
 
+// =========================
+// CONTROLLERS
+// =========================
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters
             .Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
+
 builder.Services.AddEndpointsApiExplorer();
+
+// =========================
+// SWAGGER + JWT
+// =========================
 builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -64,11 +89,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddScoped<FileService>();
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=dms.db"));
-
+// =========================
+// JWT AUTH
+// =========================
 var jwtKey = "THIS_IS_A_SUPER_LONG_DEV_SECRET_KEY_1234567890";
 var key = Encoding.UTF8.GetBytes(jwtKey);
 
@@ -92,34 +115,30 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddScoped<backend.Services.AuthService>();
-
-builder.Services.AddHttpClient<OcrService>();
-
 var app = builder.Build();
 
+// =========================
+// MIDDLEWARE
+// =========================
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.MapGet("/", () => "API is running");
 
-app.MapGet("/weatherforecast", () =>
-{
-    return new[] { new { Message = "Working" } };
-});
-
+// =========================
+// DB MIGRATION + SEED
+// =========================
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    // Apply migrations automatically
     db.Database.Migrate();
-
-    // Seed users after tables exist
     SeedData.SeedUsers(db);
 }
 
