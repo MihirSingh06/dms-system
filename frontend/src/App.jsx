@@ -322,6 +322,7 @@ function App() {
               <th>Vendor</th>
               <th>Invoice</th>
               <th>Amount</th>
+              <th>VAT</th>
               <th>Status</th>
               <th>Actions</th>
               <th>File</th>
@@ -335,6 +336,7 @@ function App() {
                   <td>{doc.vendor}</td>
                   <td>{doc.invoiceNumber}</td>
                   <td>{doc.amount}</td>
+                  <td>{doc.vatAmount}</td>
                   <td>
                     {doc.status}
                     <div style={{ fontSize: 10, color: "gray" }}>
