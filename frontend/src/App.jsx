@@ -287,6 +287,9 @@ function App() {
             if (data?.invoiceDate) {
             const [day, month, year] = data.invoiceDate.split("/");
 
+            console.log("DATE FROM AI:", data.invoiceDate);
+            console.log("DATE BEING SET:", `${year}-${month}-${day}`);
+
               setInvoiceDate(`${year}-${month}-${day}`);
               }
 
