@@ -285,13 +285,12 @@ function App() {
             setInvoiceNumber(data?.invoiceNumber || "");
 
             if (data?.invoiceDate) {
-            const [day, month, year] = data.invoiceDate.split("/");
+  alert("DATE RECEIVED: " + data.invoiceDate);
 
-            console.log("DATE FROM AI:", data.invoiceDate);
-            console.log("DATE BEING SET:", `${year}-${month}-${day}`);
+  const [day, month, year] = data.invoiceDate.split("/");
 
-              setInvoiceDate(`${year}-${month}-${day}`);
-              }
+  setInvoiceDate(`${year}-${month}-${day}`);
+}
 
             setAmount(data?.amount || "");
             setVatAmount(data?.vatAmount || "");
