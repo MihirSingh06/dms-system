@@ -273,17 +273,22 @@ function App() {
           setFile(selectedFile);
 
           try {
+
+            console.log("TEST LOG");
+
             const data = await extractDocument(selectedFile);
+
+            console.log("AI DATA:", data);
+            console.log("AI DATE:", data?.invoiceDate);
 
             setVendor(data?.vendor || "");
             setInvoiceNumber(data?.invoiceNumber || "");
 
             if (data?.invoiceDate) {
-              const d = new Date(data.invoiceDate);
-              if (!isNaN(d)) {
-                setInvoiceDate(d.toISOString().split("T")[0]);
+            const [day, month, year] = data.invoiceDate.split("/");
+
+              setInvoiceDate(`${year}-${month}-${day}`);
               }
-            }
 
             setAmount(data?.amount || "");
             setVatAmount(data?.vatAmount || "");
