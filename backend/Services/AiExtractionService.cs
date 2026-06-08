@@ -15,12 +15,35 @@ public class AiExtractionService
         _httpClient = new HttpClient();
     }
 
+    // =========================
+    // MONEY CLEANUP + VALIDATION
+    // =========================
+    private decimal? ParseMoney(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        value = value
+            .Replace("R", "")
+            .Replace("$", "")
+            .Replace(",", "")
+            .Trim();
+
+        if (decimal.TryParse(value, out var result))
+            return result;
+
+        return null;
+    }
+
     public async Task<InvoiceAiResult?> ExtractInvoiceData(string extractedText)
     {
         Console.WriteLine("AI METHOD ENTERED");
 
         var apiKey = _config["OpenAI:ApiKey"];
-        Console.WriteLine("API KEY PRESENT: " + (!string.IsNullOrEmpty(apiKey)));
+
+        Console.WriteLine(
+            "API KEY PRESENT: " + (!string.IsNullOrEmpty(apiKey))
+        );
 
         if (string.IsNullOrEmpty(apiKey))
             return null;
@@ -31,14 +54,17 @@ public class AiExtractionService
             return null;
         }
 
-        // Limit OCR text sent to AI (improves accuracy)
-    var shortenedText = extractedText.Length > 1500
-    ? extractedText.Substring(0, 1500)
-    : extractedText;
+        // =========================
+        // LIMIT OCR TEXT
+        // =========================
+        var shortenedText = extractedText.Length > 1500
+            ? extractedText.Substring(0, 1500)
+            : extractedText;
 
-        
-
-var prompt = $@"
+        // =========================
+        // AI PROMPT
+        // =========================
+        var prompt = $@"
 Extract the following fields from the invoice text.
 
 Return JSON ONLY in this format:
@@ -52,29 +78,85 @@ Return JSON ONLY in this format:
 }}
 
 Rules:
-- Invoice number may appear as DOCUMENT NO, INVOICE NO, or TAX INVOICE.
-- Invoice date may appear as DATE or DATE/TIME.
-- Amount must be the TOTAL amount of the invoice.
-- VAT must be the VAT amount only.
-- Ignore subtotal and paid amounts.
-- The invoice TOTAL is usually labeled TOTAL, TOTAL(incl), or AMOUNT DUE.
-- Always prefer TOTAL over SUBTOTAL or line totals.
-- VAT is usually labeled VAT, TAX, or VAT@.
-- Ignore values labeled SUBTOTAL, BALANCE, PAID, or CHANGE.
-- If multiple numbers appear, select the final TOTAL amount of the invoice.
+
+Invoice Number Rules:
+- Invoice number may appear as:
+  DOCUMENT NO
+  DOC NO
+  DOCUMENT #
+  INVOICE NO
+  INVOICE #
+  TAX INVOICE
+  RECEIPT NO
+  REF NO
+  REFERENCE NO
+
+- If multiple identifiers exist, prioritize:
+  1. INVOICE NO
+  2. DOCUMENT NO
+  3. TAX INVOICE
+  4. RECEIPT NO
+
+- Never use VAT numbers, account numbers, customer IDs, or phone numbers as invoice numbers.
+
+Invoice Date Rules:
+- Invoice date may appear as:
+  DATE
+  DATE/TIME
+  INVOICE DATE
+
+Amount Rules:
+- Amount must be the FINAL TOTAL payable amount.
+- Prefer values labeled:
+  TOTAL
+  TOTAL DUE
+  AMOUNT DUE
+  GRAND TOTAL
+  TOTAL(INCL)
+
+- Never use:
+  SUBTOTAL
+  BALANCE
+  CHANGE
+  CASH
+  PAID
+  TENDERED
+
+- If multiple totals exist, choose the final payable amount.
+
+VAT Rules:
+- VAT amount must only be the VAT/TAX amount.
+- VAT may appear as:
+  VAT
+  TAX
+  VAT@
+  VAT AMOUNT
+
+- If VAT is not visible, return an empty string.
 
 Invoice Text:
 {shortenedText}
 ";
 
+        // =========================
+        // OPENAI REQUEST
+        // =========================
         var requestBody = new
         {
             model = "gpt-4o-mini",
             messages = new[]
             {
-                new { role = "user", content = prompt }
+                new
+                {
+                    role = "user",
+                    content = prompt
+                }
             },
-            temperature = 0
+            temperature = 0,
+            response_format = new
+            {
+                type = "json_object"
+            }
         };
 
         Console.WriteLine("CALLING OPENAI API...");
@@ -125,15 +207,6 @@ Invoice Text:
 
         content = content.Trim();
 
-        // Remove markdown wrapping if present
-        if (content.StartsWith("```"))
-        {
-            var start = content.IndexOf('{');
-            var end = content.LastIndexOf('}');
-            if (start >= 0 && end >= 0)
-                content = content.Substring(start, end - start + 1);
-        }
-
         try
         {
             var result = JsonSerializer.Deserialize<InvoiceAiResult>(
@@ -143,7 +216,36 @@ Invoice Text:
                     PropertyNameCaseInsensitive = true
                 });
 
+            if (result == null)
+            {
+                Console.WriteLine("DESERIALIZED RESULT IS NULL");
+                return null;
+            }
+
+            // =========================
+            // VALIDATION
+            // =========================
+            var total = ParseMoney(result.Amount);
+            var vat = ParseMoney(result.VatAmount);
+
+            // VAT cannot exceed total
+            if (vat.HasValue &&
+                total.HasValue &&
+                vat > total)
+            {
+                Console.WriteLine("INVALID VAT > TOTAL");
+                result.VatAmount = "";
+            }
+
+            // Prevent missing invoice numbers
+            if (string.IsNullOrWhiteSpace(result.InvoiceNumber))
+            {
+                Console.WriteLine("MISSING INVOICE NUMBER");
+                result.InvoiceNumber = "MANUAL_REVIEW";
+            }
+
             Console.WriteLine("AI PARSED SUCCESSFULLY");
+
             return result;
         }
         catch (Exception ex)
@@ -158,8 +260,12 @@ Invoice Text:
 public class InvoiceAiResult
 {
     public string? Vendor { get; set; }
+
     public string? InvoiceNumber { get; set; }
+
     public string? InvoiceDate { get; set; }
+
     public string? VatAmount { get; set; }
+
     public string? Amount { get; set; }
 }

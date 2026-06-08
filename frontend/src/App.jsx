@@ -231,6 +231,37 @@ function App() {
         <p>No insights available.</p>
       )}
 
+      <div style={{ marginBottom: 20 }}>
+  <button
+    onClick={exportExcel}
+    style={{
+      marginRight: 10,
+      padding: "10px 16px",
+      backgroundColor: "green",
+      color: "white",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer"
+    }}
+  >
+    Download Excel Report
+  </button>
+
+  <button
+    onClick={exportPdf}
+    style={{
+      padding: "10px 16px",
+      backgroundColor: "#d9534f",
+      color: "white",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer"
+    }}
+  >
+    Download PDF Report
+  </button>
+</div>
+
       <h2>Upload Document</h2>
 
       <input

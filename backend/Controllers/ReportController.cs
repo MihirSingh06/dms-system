@@ -288,25 +288,75 @@ public async Task<IActionResult> ExportExcel()
     var documents = await _context.Documents.ToListAsync();
 
     using var package = new ExcelPackage();
-    var worksheet = package.Workbook.Worksheets.Add("Report");
 
+    var worksheet = package.Workbook.Worksheets.Add("Invoices");
+
+    // =========================
+    // HEADERS
+    // =========================
     worksheet.Cells[1, 1].Value = "Vendor";
-    worksheet.Cells[1, 2].Value = "Invoice";
-    worksheet.Cells[1, 3].Value = "Amount";
-    worksheet.Cells[1, 4].Value = "Status";
+    worksheet.Cells[1, 2].Value = "Invoice Number";
+    worksheet.Cells[1, 3].Value = "Invoice Date";
+    worksheet.Cells[1, 4].Value = "Amount";
+    worksheet.Cells[1, 5].Value = "VAT Amount";
+    worksheet.Cells[1, 6].Value = "Status";
+    worksheet.Cells[1, 7].Value = "Uploaded At";
+    worksheet.Cells[1, 8].Value = "Document Type";
 
-    for (int i = 0; i < documents.Count; i++)
+    // Bold headers
+    using (var range = worksheet.Cells[1, 1, 1, 8])
     {
-        worksheet.Cells[i + 2, 1].Value = documents[i].Vendor;
-        worksheet.Cells[i + 2, 2].Value = documents[i].InvoiceNumber;
-        worksheet.Cells[i + 2, 3].Value = documents[i].Amount;
-        worksheet.Cells[i + 2, 4].Value = documents[i].Status.ToString();
+        range.Style.Font.Bold = true;
     }
 
+    // =========================
+    // DATA
+    // =========================
+    for (int i = 0; i < documents.Count; i++)
+    {
+        var row = i + 2;
+        var doc = documents[i];
+
+        worksheet.Cells[row, 1].Value = doc.Vendor;
+
+        worksheet.Cells[row, 2].Value = doc.InvoiceNumber;
+
+        worksheet.Cells[row, 3].Value =
+            doc.InvoiceDate?.ToString("yyyy-MM-dd");
+
+        worksheet.Cells[row, 4].Value = doc.Amount;
+
+        worksheet.Cells[row, 5].Value = doc.VatAmount;
+
+        worksheet.Cells[row, 6].Value = doc.Status.ToString();
+
+        worksheet.Cells[row, 7].Value =
+            doc.UploadedAt.ToString("yyyy-MM-dd HH:mm");
+
+        worksheet.Cells[row, 8].Value = doc.DocumentType;
+    }
+
+    // =========================
+    // FORMATTING
+    // =========================
+
+    // Currency formatting
+    worksheet.Column(4).Style.Numberformat.Format = "R #,##0.00";
+    worksheet.Column(5).Style.Numberformat.Format = "R #,##0.00";
+
+    // Auto-size columns
+    worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+    // Freeze header row
+    worksheet.View.FreezePanes(2, 1);
+
     var bytes = package.GetAsByteArray();
-    return File(bytes,
+
+    return File(
+        bytes,
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Report.xlsx");
+        "Invoices_Report.xlsx"
+    );
 }
 
 [HttpGet("export-pdf")]

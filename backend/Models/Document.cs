@@ -20,11 +20,12 @@ public class Document
     public DateTime? InvoiceDate { get; set; }
     public decimal? Amount { get; set; }
     public decimal? VatAmount { get; set; }
+    public string? OcrText { get; set; }
     
 
     public string FileHash { get; set; } = string.Empty;
 
-    public DocumentStatus Status { get; set; } = DocumentStatus.PendingReviewer;
+    public DocumentStatus Status { get; set; } = DocumentStatus.Approved;
 
     public int UploadedByUserId { get; set; }
     public User? UploadedBy { get; set; }
