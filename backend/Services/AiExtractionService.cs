@@ -57,9 +57,12 @@ public class AiExtractionService
         // =========================
         // LIMIT OCR TEXT
         // =========================
-        var shortenedText = extractedText.Length > 1500
+        var shortenedText = extractedText.Length > 1000
             ? extractedText.Substring(0, 1500)
             : extractedText;
+
+            Console.WriteLine("OCR TEXT:");
+            Console.WriteLine(shortenedText);
 
         // =========================
         // AI PROMPT
@@ -106,23 +109,35 @@ Invoice Date Rules:
   INVOICE DATE
 
 Amount Rules:
-- Amount must be the FINAL TOTAL payable amount.
+- Amount must be the FINAL TOTAL INCLUSIVE amount payable.
+
 - Prefer values labeled:
-  TOTAL
-  TOTAL DUE
-  AMOUNT DUE
+  TOTAL INCL
+  TOTAL INCLUDING VAT
   GRAND TOTAL
+  AMOUNT DUE
+  TOTAL PAYABLE
   TOTAL(INCL)
 
 - Never use:
+  VAT
+  VAT AMOUNT
+  TOTAL EXCL
   SUBTOTAL
+  UNIT PRICE
+  LINE TOTAL
+  QTY
+  PAID
   BALANCE
   CHANGE
   CASH
-  PAID
   TENDERED
 
-- If multiple totals exist, choose the final payable amount.
+- If TOTAL INCL and TOTAL EXCL both exist, ALWAYS choose TOTAL INCL.
+
+- If multiple totals exist, choose the largest final payable amount.
+
+- The final invoice amount should normally be greater than the VAT amount.
 
 VAT Rules:
 - VAT amount must only be the VAT/TAX amount.

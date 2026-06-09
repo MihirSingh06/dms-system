@@ -35,16 +35,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins(
-                "https://dms-system-ruby.vercel.app",
-                "https://ideal-xylophone-5p6g9x779qjhjgj-5173.app.github.dev",
-                "https://ideal-xylophone-5p6g9x779qjhjgj-5078.app.github.dev",
-                "https://literate-guide-74qvxpjj47rcx9vw-5173.app.github.dev",
-                "http://localhost:5173",
-                "https://dms-system-ruby.vercel.app"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+          policy
+    .AllowAnyOrigin()
+    .AllowAnyHeader()
+    .AllowAnyMethod();
+
         });
 });
 

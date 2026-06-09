@@ -32,11 +32,15 @@ if (string.IsNullOrWhiteSpace(apiKey))
         content.Add(fileContent, "file", file.FileName);
         content.Add(new StringContent(apiKey), "apikey");
         content.Add(new StringContent("eng"), "language");
+        content.Add(new StringContent("true"), "isTable");
+        content.Add(new StringContent("true"), "scale");
+        content.Add(new StringContent("2"), "OCREngine");
 
         var response = await _httpClient.PostAsync("https://api.ocr.space/parse/image", content);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync();
+        
 
         using var doc = JsonDocument.Parse(json);
         var text = doc.RootElement

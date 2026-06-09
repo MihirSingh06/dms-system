@@ -326,7 +326,7 @@ public async Task<IActionResult> ExportExcel()
 
         worksheet.Cells[row, 4].Value = doc.Amount;
 
-        worksheet.Cells[row, 5].Value = doc.VatAmount;
+         worksheet.Cells[row, 5].Value = doc.VatAmount;
 
         worksheet.Cells[row, 6].Value = doc.Status.ToString();
 

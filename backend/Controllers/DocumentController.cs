@@ -95,11 +95,51 @@ public class DocumentsController : ControllerBase
         // =========================
         var aiResult = await _aiService.ExtractInvoiceData(extractedText);
 
+        
+
         string vendor = "";
         string invoiceNumber = "";
         DateTime? invoiceDate = null;
         decimal? amount = null;
         decimal? vatAmount = null;
+
+        // Alpha Pharm Total Incl
+var totalInclMatch = Regex.Match(
+    extractedText,
+    @"Total\s+Incl\.?\s+([\d\s]+\.\d{2})",
+    RegexOptions.IgnoreCase);
+
+if (totalInclMatch.Success)
+{
+    var totalText = totalInclMatch.Groups[1].Value
+        .Replace(" ", "")
+        .Trim();
+
+    if (decimal.TryParse(totalText, out var parsedTotal))
+    {
+        amount = parsedTotal;
+        Console.WriteLine($"REGEX TOTAL = {amount}");
+    }
+}
+
+// Alpha Pharm VAT
+var vatMatch = Regex.Match(
+    extractedText,
+    @"Vat\s*@\s*15%\s+([\d\s]+\.\d{2})",
+    RegexOptions.IgnoreCase);
+
+if (vatMatch.Success)
+{
+    var vatText = vatMatch.Groups[1].Value
+        .Replace(" ", "")
+        .Trim();
+
+    if (decimal.TryParse(vatText, out var parsedVat))
+    {
+        vatAmount = parsedVat;
+        Console.WriteLine($"REGEX VAT = {vatAmount}");
+    }
+}
 
         if (aiResult != null)
         {
@@ -107,14 +147,34 @@ public class DocumentsController : ControllerBase
             invoiceNumber = aiResult.InvoiceNumber ?? "";
 
             // Date
-            if (!string.IsNullOrWhiteSpace(aiResult.InvoiceDate) &&
-                DateTime.TryParse(aiResult.InvoiceDate, out var parsedDate))
-            {
-                invoiceDate = parsedDate;
-            }
+// Date
+if (!string.IsNullOrWhiteSpace(aiResult.InvoiceDate))
+{
+    Console.WriteLine($"RAW AI DATE = [{aiResult.InvoiceDate}]");
+
+    if (DateTime.TryParseExact(
+        aiResult.InvoiceDate.Trim(),
+        "dd/MM/yyyy",
+        System.Globalization.CultureInfo.InvariantCulture,
+        System.Globalization.DateTimeStyles.None,
+        out var parsedDate))
+    {
+        invoiceDate = parsedDate;
+        Console.WriteLine($"PARSED DATE = [{invoiceDate}]");
+    }
+    else
+    {
+        Console.WriteLine("DATE PARSE FAILED");
+    }
+}
+
+
+Console.WriteLine("AI DATE: " + aiResult?.InvoiceDate);
+Console.WriteLine("PARSED DATE: " + invoiceDate);
 
             // Amount (clean R and commas)
-if (!string.IsNullOrWhiteSpace(aiResult.Amount))
+if (amount == null &&
+    !string.IsNullOrWhiteSpace(aiResult.Amount))
 {
     var cleaned = aiResult.Amount
         .Replace("R", "")
@@ -127,24 +187,30 @@ if (!string.IsNullOrWhiteSpace(aiResult.Amount))
     }
 
     if (decimal.TryParse(cleaned, out var parsedAmount))
+    {
         amount = parsedAmount;
+        Console.WriteLine($"AI TOTAL = {amount}");
+    }
 }
             // VAT (clean R and commas)
-if (!string.IsNullOrWhiteSpace(aiResult.VatAmount))
+if (vatAmount == null &&
+    !string.IsNullOrWhiteSpace(aiResult.VatAmount))
 {
     var cleanedVat = aiResult.VatAmount
         .Replace("R", "")
         .Replace(",", "")
         .Trim();
 
-    // Fix OCR issue like 33222 -> 332.22
     if (!cleanedVat.Contains(".") && cleanedVat.Length > 2)
     {
         cleanedVat = cleanedVat.Insert(cleanedVat.Length - 2, ".");
     }
 
     if (decimal.TryParse(cleanedVat, out var parsedVat))
+    {
         vatAmount = parsedVat;
+        Console.WriteLine($"AI VAT = {vatAmount}");
+    }
 }
         }
 
@@ -215,6 +281,9 @@ if (!string.IsNullOrWhiteSpace(aiResult.VatAmount))
         // =========================
         // SAVE DOCUMENT
         // =========================
+        
+        Console.WriteLine($"FINAL INVOICE DATE = [{invoiceDate}]");
+        
         var document = new Document
         {
             FileName = file.FileName,
