@@ -287,6 +287,8 @@ public async Task<IActionResult> ExportExcel()
 {
     var documents = await _context.Documents.ToListAsync();
 
+    Console.WriteLine($"Documents Count: {documents.Count}");
+
     using var package = new ExcelPackage();
 
     var worksheet = package.Workbook.Worksheets.Add("Invoices");

@@ -152,12 +152,20 @@ if (!string.IsNullOrWhiteSpace(aiResult.InvoiceDate))
 {
     Console.WriteLine($"RAW AI DATE = [{aiResult.InvoiceDate}]");
 
-    if (DateTime.TryParseExact(
-        aiResult.InvoiceDate.Trim(),
+
+
+if (DateTime.TryParseExact(
+    aiResult.InvoiceDate.Trim(),
+    new[]
+    {
         "dd/MM/yyyy",
-        System.Globalization.CultureInfo.InvariantCulture,
-        System.Globalization.DateTimeStyles.None,
-        out var parsedDate))
+        "yyyy/MM/dd",
+        "yyyy-MM-dd",
+        "dd-MM-yyyy"
+    },
+    System.Globalization.CultureInfo.InvariantCulture,
+    System.Globalization.DateTimeStyles.None,
+    out var parsedDate))
     {
         invoiceDate = parsedDate;
         Console.WriteLine($"PARSED DATE = [{invoiceDate}]");
@@ -177,16 +185,18 @@ if (amount == null &&
     !string.IsNullOrWhiteSpace(aiResult.Amount))
 {
     var cleaned = aiResult.Amount
+        .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
         .Replace("R", "")
-        .Replace(",", "")
         .Trim();
 
-    if (!cleaned.Contains(".") && cleaned.Length > 2)
-    {
-        cleaned = cleaned.Insert(cleaned.Length - 2, ".");
-    }
+    // Convert comma decimal to dot decimal
+    cleaned = cleaned.Replace(",", ".");
 
-    if (decimal.TryParse(cleaned, out var parsedAmount))
+    if (decimal.TryParse(
+        cleaned,
+        System.Globalization.NumberStyles.Any,
+        System.Globalization.CultureInfo.InvariantCulture,
+        out var parsedAmount))
     {
         amount = parsedAmount;
         Console.WriteLine($"AI TOTAL = {amount}");
@@ -197,16 +207,17 @@ if (vatAmount == null &&
     !string.IsNullOrWhiteSpace(aiResult.VatAmount))
 {
     var cleanedVat = aiResult.VatAmount
+        .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
         .Replace("R", "")
-        .Replace(",", "")
         .Trim();
 
-    if (!cleanedVat.Contains(".") && cleanedVat.Length > 2)
-    {
-        cleanedVat = cleanedVat.Insert(cleanedVat.Length - 2, ".");
-    }
+    cleanedVat = cleanedVat.Replace(",", ".");
 
-    if (decimal.TryParse(cleanedVat, out var parsedVat))
+    if (decimal.TryParse(
+        cleanedVat,
+        System.Globalization.NumberStyles.Any,
+        System.Globalization.CultureInfo.InvariantCulture,
+        out var parsedVat))
     {
         vatAmount = parsedVat;
         Console.WriteLine($"AI VAT = {vatAmount}");

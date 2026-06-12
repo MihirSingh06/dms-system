@@ -57,8 +57,8 @@ public class AiExtractionService
         // =========================
         // LIMIT OCR TEXT
         // =========================
-        var shortenedText = extractedText.Length > 1000
-            ? extractedText.Substring(0, 1500)
+        var shortenedText = extractedText.Length > 3000
+            ? extractedText.Substring(0, 3000)
             : extractedText;
 
             Console.WriteLine("OCR TEXT:");
