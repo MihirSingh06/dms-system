@@ -37,6 +37,7 @@ function App() {
   const [vatAmount, setVatAmount] = useState("");
   const [file, setFile] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
 
   const [userRole, setUserRole] = useState(null);
@@ -97,12 +98,12 @@ const handleUpload = async () => {
       return;
     }
 
-    for (const selectedFile of selectedFiles) {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
+for (let i = 0; i < selectedFiles.length; i++) {
+  const selectedFile = selectedFiles[i];
 
-      await uploadDocument(formData);
-    }
+  setUploadProgress(
+    `Processing ${i + 1} of ${selectedFiles.length}...`
+  );
 
     setUploadMessage("All uploads successful!");
 
@@ -315,6 +316,8 @@ const handleUpload = async () => {
       }
     }
 
+    setUploadProgress("Processing complete!");
+    
     // Allow the same files to be selected again later
     e.target.value = "";
   }}
@@ -327,6 +330,12 @@ const handleUpload = async () => {
       <input placeholder="VAT" value={vatAmount} onChange={(e) => setVatAmount(e.target.value)} />
 
       <button onClick={handleUpload}>Upload</button>
+
+      {uploadProgress && (
+  <div style={{ marginTop: 10 }}>
+    {uploadProgress}
+  </div>
+)}
       <div>{uploadMessage}</div>
 
       <h2>Documents</h2>
