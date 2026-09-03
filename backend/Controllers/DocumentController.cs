@@ -182,12 +182,13 @@ Console.WriteLine("PARSED DATE: " + invoiceDate);
 
             // Amount (clean R and commas)
 if (amount == null &&
-    !string.IsNullOrWhiteSpace(aiResult.Amount))
+    !string.IsNullOrWhiteSpace(aiResult.Total))
 {
-    var cleaned = aiResult.Amount
-        .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
-        .Replace("R", "")
-        .Trim();
+    var cleaned = aiResult.Total
+    .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
+    .Replace("R", "")
+    .Replace(" ", "")
+    .Trim();
 
     // Convert comma decimal to dot decimal
     cleaned = cleaned.Replace(",", ".");
@@ -206,10 +207,11 @@ if (amount == null &&
 if (vatAmount == null &&
     !string.IsNullOrWhiteSpace(aiResult.VatAmount))
 {
-    var cleanedVat = aiResult.VatAmount
-        .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
-        .Replace("R", "")
-        .Trim();
+var cleanedVat = aiResult.VatAmount
+    .Replace("ZAR", "", StringComparison.OrdinalIgnoreCase)
+    .Replace("R", "")
+    .Replace(" ", "")
+    .Trim();
 
     cleanedVat = cleanedVat.Replace(",", ".");
 
@@ -257,20 +259,6 @@ if (vatAmount == null &&
             }
         }
 
-        if (amount == null)
-        {
-            var totalMatch = Regex.Match(
-                extractedText,
-                @"Total.*?\bR(\d{1,3}(?:,\d{3})*\.\d{2})",
-                RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-            if (totalMatch.Success)
-            {
-                var clean = totalMatch.Groups[1].Value.Replace(",", "");
-                if (decimal.TryParse(clean, out var parsed))
-                    amount = parsed;
-            }
-        }
 
         string documentType = extractedText.ToLower().Contains("credit")
             ? "CreditNote"

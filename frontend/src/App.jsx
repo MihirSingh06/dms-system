@@ -264,42 +264,53 @@ function App() {
 
       <h2>Upload Document</h2>
 
-      <input
-        type="file"
-        onChange={async (e) => {
-          const selectedFile = e.target.files?.[0];
-          if (!selectedFile) return;
+<input
+  type="file"
+  multiple
+  accept=".pdf"
+  onChange={async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
 
-          setFile(selectedFile);
+    if (selectedFiles.length === 0) return;
 
-          try {
+    for (const selectedFile of selectedFiles) {
+      setFile(selectedFile);
 
-            console.log("TEST LOG");
+      try {
+        console.log("PROCESSING FILE:", selectedFile.name);
 
-            const data = await extractDocument(selectedFile);
+        const data = await extractDocument(selectedFile);
 
-            console.log("AI DATA:", data);
-            console.log("AI DATE:", data?.invoiceDate);
+        console.log("AI DATA:", data);
+        console.log("AI DATE:", data?.invoiceDate);
 
-            setVendor(data?.vendor || "");
-            setInvoiceNumber(data?.invoiceNumber || "");
+        setVendor(data?.vendor || "");
+        setInvoiceNumber(data?.invoiceNumber || "");
 
-            if (data?.invoiceDate) {
-  alert("DATE RECEIVED: " + data.invoiceDate);
+        if (data?.invoiceDate) {
+          alert("DATE RECEIVED: " + data.invoiceDate);
 
-  const [day, month, year] = data.invoiceDate.split("/");
+          const [day, month, year] = data.invoiceDate.split("/");
 
-  setInvoiceDate(`${year}-${month}-${day}`);
-}
+          setInvoiceDate(`${year}-${month}-${day}`);
+        }
 
-            setAmount(data?.amount || "");
-            setVatAmount(data?.vatAmount || "");
+        setAmount(data?.amount || "");
+        setVatAmount(data?.vatAmount || "");
 
-          } catch (err) {
-            console.error("Extraction failed:", err);
-          }
-        }}
-      />
+      } catch (err) {
+        console.error(
+          "Extraction failed for:",
+          selectedFile.name,
+          err
+        );
+      }
+    }
+
+    // Allow the same files to be selected again later
+    e.target.value = "";
+  }}
+/>
 
       <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
       <input placeholder="Vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
