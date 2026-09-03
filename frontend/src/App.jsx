@@ -36,6 +36,7 @@ function App() {
   const [amount, setAmount] = useState("");
   const [vatAmount, setVatAmount] = useState("");
   const [file, setFile] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadMessage, setUploadMessage] = useState("");
 
   const [userRole, setUserRole] = useState(null);
@@ -89,28 +90,33 @@ function App() {
   // =========================
   // UPLOAD DOCUMENT (SAVE)
   // =========================
-  const handleUpload = async () => {
-    try {
-      if (!file) {
-        setUploadMessage("Please select a file.");
-        return;
-      }
+const handleUpload = async () => {
+  try {
+    if (selectedFiles.length === 0) {
+      setUploadMessage("Please select a file.");
+      return;
+    }
 
+    for (const selectedFile of selectedFiles) {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", selectedFile);
 
       await uploadDocument(formData);
-
-      setUploadMessage("Upload successful!");
-
-      getDocuments().then(setDocuments);
-      getStatusSummary().then(setSummary);
-      getSpendSummary().then(setSpendData);
-
-    } catch (error) {
-      setUploadMessage(error.message || "Upload failed.");
     }
-  };
+
+    setUploadMessage("All uploads successful!");
+
+    getDocuments().then(setDocuments);
+    getStatusSummary().then(setSummary);
+    getSpendSummary().then(setSpendData);
+
+    setSelectedFiles([]);
+    setFile(null);
+
+  } catch (error) {
+    setUploadMessage(error.message || "Upload failed.");
+  }
+};
 
   // =========================
   // APPROVAL
@@ -272,6 +278,8 @@ function App() {
     const selectedFiles = Array.from(e.target.files || []);
 
     if (selectedFiles.length === 0) return;
+
+    setSelectedFiles(selectedFiles);
 
     for (const selectedFile of selectedFiles) {
       setFile(selectedFile);
