@@ -98,12 +98,12 @@ const handleUpload = async () => {
       return;
     }
 
-for (let i = 0; i < selectedFiles.length; i++) {
-  const selectedFile = selectedFiles[i];
+    for (const selectedFile of selectedFiles) {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
 
-  setUploadProgress(
-    `Processing ${i + 1} of ${selectedFiles.length}...`
-  );
+      await uploadDocument(formData);
+    }
 
     setUploadMessage("All uploads successful!");
 
@@ -113,7 +113,6 @@ for (let i = 0; i < selectedFiles.length; i++) {
 
     setSelectedFiles([]);
     setFile(null);
-
   } catch (error) {
     setUploadMessage(error.message || "Upload failed.");
   }
